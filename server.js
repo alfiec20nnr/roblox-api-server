@@ -13,7 +13,7 @@ let searchHistory = [];
 let favorites = new Set();
 
 // Roblox API base
-const ROBLOX_API = "https://catalog.roblox.com/v1/search/items";
+const ROBLOX_API = "http://catalog.roblox.com/v1/search/items";
 
 // -----------------------------
 // 🔍 SEARCH ENDPOINT
