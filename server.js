@@ -8,14 +8,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// -----------------------------
-// 🧠 IN-MEMORY STORAGE
-// -----------------------------
+// In-memory storage (replace with DB in production)
 let searchHistory = [];
 let favorites = new Set();
 
-// Roblox API base (FIXED: HTTPS)
-const ROBLOX_API = "https://catalog.roblox.com/v1/search/items";
+// Roblox API base
+const ROBLOX_API = "http://catalog.roblox.com/v1/search/items";
 
 // -----------------------------
 // 🔍 SEARCH ENDPOINT
@@ -37,30 +35,13 @@ app.get("/search", async (req, res) => {
       cursor
     } = req.query;
 
-    // -----------------------------
-    // 🧠 IMPROVED SEARCH HISTORY
-    // -----------------------------
-    if (keyword && keyword.trim().length > 1) {
-      const normalized = keyword.trim().toLowerCase();
-
-      // Remove duplicates
-      searchHistory = searchHistory.filter(
-        item => item.keyword !== normalized
-      );
-
-      // Add to front
-      searchHistory.unshift({
-        keyword: normalized,
-        timestamp: Date.now()
-      });
-
-      // Keep only last 10
-      searchHistory = searchHistory.slice(0, 10);
+    // Save search history
+    if (keyword) {
+      searchHistory.unshift(keyword);
+      searchHistory = [...new Set(searchHistory)].slice(0, 10);
     }
 
-    // -----------------------------
-    // 🔧 BUILD PARAMS
-    // -----------------------------
+    // Build query params
     let params = {
       keyword,
       category,
@@ -71,7 +52,7 @@ app.get("/search", async (req, res) => {
       cursor
     };
 
-    // Free filter
+    // Free items filter
     if (free === "true") {
       params.minPrice = 0;
       params.maxPrice = 0;
@@ -79,24 +60,19 @@ app.get("/search", async (req, res) => {
 
     // Limited filter
     if (limited === "true") {
-      params.salesTypeFilter = "2";
+      params.salesTypeFilter = "2"; // limited
     }
 
     // Sorting
     if (sortType) params.sortType = sortType;
     if (sortAggregation) params.sortAggregation = sortAggregation;
 
-    // Remove undefined params (FIX)
-    Object.keys(params).forEach(
-      key => params[key] === undefined && delete params[key]
-    );
-
     const response = await axios.get(ROBLOX_API, { params });
 
     let data = response.data.data;
 
     // -----------------------------
-    // 🧪 ADVANCED FILTERING
+    // 🧪 Advanced Filtering
     // -----------------------------
     if (include) {
       const includeTerms = include.split(",");
@@ -146,68 +122,39 @@ app.delete("/favorite/:id", (req, res) => {
   res.json({ success: true });
 });
 
-// 🔥 FIXED: Batch request instead of multiple calls
 app.get("/favorites", async (req, res) => {
   try {
     const ids = Array.from(favorites);
 
-    if (ids.length === 0) return res.json([]);
-
-    const response = await axios.post(
-      "https://catalog.roblox.com/v1/catalog/items/details",
-      {
-        items: ids.map(id => ({
-          itemType: "Asset",
-          id: parseInt(id)
-        }))
-      }
+    const requests = ids.map(id =>
+      axios.get(`https://catalog.roblox.com/v1/catalog/items/${id}/details`)
     );
 
-    res.json(response.data.data);
+    const results = await Promise.all(requests);
+
+    res.json(results.map(r => r.data));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // -----------------------------
-// 🎯 RECOMMENDATIONS (FIXED)
+// 🎯 RECOMMENDATIONS
 // -----------------------------
 app.get("/recommendations", async (req, res) => {
   try {
-    let keywords = [];
-
-    // Use recent searches (top 3)
-    if (searchHistory.length > 0) {
-      keywords = searchHistory.slice(0, 3).map(s => s.keyword);
-    }
-
-    // Use favorites signal (basic boost)
-    if (favorites.size > 0) {
-      keywords.push("limited", "rare");
-    }
-
-    // Fallback keywords
-    if (keywords.length === 0) {
-      keywords = ["hat", "shirt", "accessory"];
-    }
-
-    // Random keyword for variation
-    const keyword =
-      keywords[Math.floor(Math.random() * keywords.length)];
+    // Simple recommendation: based on last search
+    const lastSearch = searchHistory[0] || "popular";
 
     const response = await axios.get(ROBLOX_API, {
       params: {
-        keyword,
-        sortType: 3,
+        keyword: lastSearch,
+        sortType: "3", // relevance/popular
         limit: 20
       }
     });
 
-    res.json({
-      basedOn: keyword,
-      results: response.data.data
-    });
-
+    res.json(response.data.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
