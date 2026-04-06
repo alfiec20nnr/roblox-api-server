@@ -150,20 +150,25 @@ app.get("/favorites", async (req, res) => {
 app.get("/recommendations", async (req, res) => {
   try {
     // Simple recommendation: based on last search
-    const lastSearch = searchHistory[0] || "popular";
+    const lastSearch = (searchHistory && searchHistory[0]) ? searchHistory[0] : "popular";
 
     const response = await axios.get(ROBLOX_API, {
       params: {
         keyword: lastSearch,
-        sortType: "3", // relevance/popular
+        sortType: "1", // relevance/popular
         limit: 20
       }
     });
 
     res.json(response.data.data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  console.error("Recommendation error:", err.response?.data || err.message);
+
+  res.status(500).json({ 
+    error: err.message,
+    details: err.response?.data
+  });
+}
 });
 
 // -----------------------------
