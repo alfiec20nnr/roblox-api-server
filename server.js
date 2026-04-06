@@ -152,14 +152,7 @@ app.get("/recommendations", async (req, res) => {
     // Simple recommendation: based on last search
     const lastSearch = (searchHistory && searchHistory[0]) ? searchHistory[0] : "popular";
 
-    const response = await axios.get(ROBLOX_API, {
-      params: {
-        keyword: lastSearch,
-        limit: 100
-      }
-    });
-
-    res.json(response.data.data);
+    res.json(lastSearch);
   } catch (err) {
   console.error("Recommendation error:", err.response?.data || err.message);
 
