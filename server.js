@@ -32,11 +32,17 @@ app.get("/search", async (req, res) => {
       sortAggregation,
       include,
       exclude,
-      cursor
+      cursor,
+      saveHistory // 👈 new param
     } = req.query;
 
-    // Save search history
-    if (keyword) {
+    // -----------------------------
+    // 🧠 Save search history (optional)
+    // -----------------------------
+    const shouldSaveHistory = saveHistory !== "false"; 
+    // default = true unless explicitly false
+
+    if (keyword && shouldSaveHistory) {
       searchHistory.unshift(keyword);
       searchHistory = [...new Set(searchHistory)].slice(0, 10);
     }
@@ -60,7 +66,7 @@ app.get("/search", async (req, res) => {
 
     // Limited filter
     if (limited === "true") {
-      params.salesTypeFilter = "2"; // limited
+      params.salesTypeFilter = "2";
     }
 
     // Sorting
