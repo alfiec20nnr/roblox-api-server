@@ -155,8 +155,7 @@ app.get("/recommendations", async (req, res) => {
     const response = await axios.get(ROBLOX_API, {
       params: {
         keyword: lastSearch,
-        sortType: "1", // relevance/popular
-        limit: 20
+        limit: 100
       }
     });
 
