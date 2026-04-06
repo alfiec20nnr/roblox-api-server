@@ -54,7 +54,7 @@ app.get("/search", async (req, res) => {
       creatorName: creator,
       minPrice,
       maxPrice,
-      limit: 30,
+      limit: 100,
       cursor
     };
 
